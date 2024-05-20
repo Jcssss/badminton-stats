@@ -17,7 +17,7 @@ app.get("/api", async (req, res) => {
     res.json({ message: data });
 });
 
-const initBrowser = async () => { 
+const initBrowser = async () => {  
     const browser = await puppeteer.launch();
     return browser;
 };
@@ -38,7 +38,6 @@ const getData = async () => {
         return rankdate.textContent;
     });
 
-    console.log(data);
     await browser.close();
     return data;
 };
