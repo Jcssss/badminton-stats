@@ -14,7 +14,7 @@ function App() {
     }, []);
 
     return (
-        <div> {data} </div>
+        <div> {(data === null)? 'Loading...' : data} </div>
     );
 }
 
