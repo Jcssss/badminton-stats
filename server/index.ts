@@ -46,7 +46,7 @@ app.get("/api/ranks", async (req, res) => {
 // Initializes a browser window for puppeteer
 const initPage = async (url: string): Promise<puppeteer.Page> => {  
     const browser = await puppeteer.launch({
-        //headless: false,
+        headless: false,
     });
 
     let page = await browser.newPage();
@@ -87,13 +87,13 @@ const getPlayerRankingData = async (
     // Initializes browser and loads pages
     let page = await initPage(urls[event]);
 
-    let rankingData: [[string, string]] = [['Rank', 'Points']];
+    let rankingData: [string, string][] = [];
     for (let i = 0; i < weeks; i++) {
         
         await selectWeek(page, i);
 
         // Loops through all pages until reaches the last page or finds the player
-        let weekData: [string, string] = ['', '']
+        let weekData: [string, string] = ['', ''];
         while (weekData[0] == '') {
 
             // Searches the current page for the player
@@ -119,24 +119,24 @@ const getPlayerRankingData = async (
     }
 
     await page.browser().close();
-    return rankingData;
+    return rankingData as [[string, string]];
 };
 
 // Gets the overall rankings of the top X player
 const getOverallRankingData = async (
     event: string, players: number, weeks: number
-): Promise<[[[string, string, string]]]> => {
+): Promise<[string, string, string][][]> => {
     
     // Initializes browser and loads pages
     let page = await initPage(urls[event]);
 
-    let rankingData: [[[string, string, string]]] = [[['Name', 'Rank', 'Points']]];
+    let rankingData: [string, string, string][][] = [];
     for (let i = 0; i < weeks; i++) {
         
         await selectWeek(page, i);
 
         // Loops through all pages until reaches the last page or finds the player
-        let weekData: [[string, string, string]] = [['', '', '']]
+        let weekData: [string, string, string][] = [['', '', '']]
         while (weekData[0][0] == '') {
 
             // Searches the current page for the player
@@ -172,7 +172,7 @@ const getNextPageLink = async (page: puppeteer.Page):Promise<string> => {
         const pageNumberCont = document.querySelector('span.pagenrs');
         let nextPageAnchor = pageNumberCont.querySelector('a.page_next');
         if (nextPageAnchor) {
-            return 'https://bwf.tournamentsoftware.com/' + nextPageAnchor.getAttribute('href');
+            return 'https://bwf.tournamentsoftware.com/'  + nextPageAnchor.getAttribute('href');
         }
         return '';
     });
@@ -208,25 +208,25 @@ const findPlayerPointRank = async (page: puppeteer.Page, player: string):Promise
 }
 
 // Given a page, searches the list of players for the specified player and returns their points and rank
-const findWeeklyPointRank = async (page: puppeteer.Page, players: number):Promise<[[string, string, string]]> => {
+const findWeeklyPointRank = async (page: puppeteer.Page, players: number):Promise<[string, string, string][]> => {
     
-    let data: [[string, string, string]];
+    let data: [string, string, string][] = [];
 
     // Gets the number of players on the page, excludes the column headers,
     // blank row, and page number footer
     const playersOnPage = await page.evaluate(() => {
         const playerContainer = document.querySelector('table.ruler > tbody');
-        return playerContainer.childElementCount - 3
+        return playerContainer.childElementCount - 3;
     })
     
     for (let playerNum = 0; playerNum < playersOnPage; playerNum++) {
         let rankData = await page.evaluate((playerNum): [string, string, string] => {
-            let curPlayer = document.querySelector(`table.ruler > tbody > tr:nth-child(${playerNum + 2})`);
+            let curPlayer = document.querySelector(`table.ruler > tbody > tr:nth-child(${playerNum + 3})`);
             
             if (curPlayer) {
                 let rank = curPlayer.querySelector('td.rank').textContent;
                 let points = curPlayer.querySelector('td.rankingpoints').textContent;
-                let name = curPlayer.querySelector('span.flag').textContent;
+                let name = curPlayer.querySelector('span.flag').parentNode.querySelector('a').textContent;
                 return [name, rank, points];
             } else {
                 return ['', '', ''];
