@@ -30,7 +30,10 @@ app.get("/api/playerrank", async (req, res) => {
 });
 
 app.get("/api/playerbio", async (req, res) => {
-    const data = await getPlayerData(req.query.player as string);
+    const data = await getPlayerData(
+        req.query.event as string,
+        req.query.player as string
+    );
     res.json({ message: data });
 });
 
@@ -46,7 +49,7 @@ app.get("/api/ranks", async (req, res) => {
 // Initializes a browser window for puppeteer
 const initPage = async (url: string): Promise<puppeteer.Page> => {  
     const browser = await puppeteer.launch({
-        //headless: false,
+        headless: false,
     });
 
     let page = await browser.newPage();
@@ -58,7 +61,7 @@ const initPage = async (url: string): Promise<puppeteer.Page> => {
 };
 
 // Given a player's name, searches for the player in the search bar and returns a matching result.
-const getPlayerData = async (player: string): Promise<string> => {
+const getPlayerData = async (event: string, player: string): Promise<Object> => {
     
     // Initializes browser and loads page
     let page = await initPage('https://bwf.tournamentsoftware.com/ranking/ranking.aspx?rid=70');
@@ -70,13 +73,53 @@ const getPlayerData = async (player: string): Promise<string> => {
         return 'There are no players with that name.'
     }
 
-    await page.evaluate(() => {
+    let playerPage = await page.evaluate(() => {
         const playerLink = document.querySelector('a.nav-link.media__link') as HTMLElement;
-        playerLink.click();
+        return 'https://bwf.tournamentsoftware.com/' + playerLink.getAttribute('href');
     })
 
-    await page.browser().close();
-    return 'Got Bio';
+    const tags = {
+        MS: 'Singles',
+        WS: 'Singles',
+        MD: 'Doubles',
+        WD: 'Doubles',
+        XD: 'Mixed',
+    }
+
+    page.goto(playerPage);
+    await page.waitForSelector(`#tabStats${tags[event]}`);
+
+    let data = await page.evaluate((id) => {
+        const singlesStats = document.querySelector(id);
+        const stats = singlesStats.querySelectorAll('div.flex-container--center > span.list__value-start');
+        return Array.from(stats).map((stat) => {
+            return stat.textContent.replace(/[\\n\s]/g, '');
+        })
+    }, `#tabStats${tags[event]}`);
+
+    await page.goto(await page.url() + '/tournaments');
+
+    let tournamentData = await page.evaluate((event) => {
+        let tournaments = document.querySelectorAll('#tabcontent > div.module--card');
+        let data = Array.from(tournaments).map((tournament) => {
+
+            let event = tournament.querySelector('li.list__item > h4').textContent.replace(/[\\n\sEvent:]/g, '');;
+
+            let header = tournament.querySelector('li.list__item > div.media');
+            let name = header.querySelector('h4.media__title > a').getAttribute('title');
+            
+            // Get the start and end dates of the tournament
+            let dateElements = header.querySelectorAll('time');
+            let dates = Array.from(dateElements).map((time) => {
+                return time.getAttribute('datetime');
+            })
+
+            console.log(event)
+        })
+    }, event);
+
+    //await page.browser().close();
+    return data;
 }
 
 // Gets the overall rankings of a specific player
@@ -233,9 +276,10 @@ const findWeeklyPointRank = async (
                 let rank = curPlayer.querySelector('td.rank').textContent;
                 let points = curPlayer.querySelector('td.rankingpoints').textContent;
                 let flags = curPlayer.querySelectorAll('span.flag');
+                let country = flags[0].textContent.replace('[', '').replace(/\]\s?/, '');
                 let nameAnchors = Array.from(flags).map((flag) => flag.parentNode.querySelector('a'));
                 let names = nameAnchors.map((anch) => anch.textContent);
-                return [...names, rank, points]; 
+                return [country, ...names, rank, points]; 
             } else {
                 return [];
             }
