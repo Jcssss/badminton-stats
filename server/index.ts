@@ -102,8 +102,15 @@ const getPlayerData = async (event: string, player: string): Promise<Object> => 
     let tournamentData = await page.evaluate((event) => {
         let tournaments = document.querySelectorAll('#tabcontent > div.module--card');
         let data = Array.from(tournaments).map((tournament) => {
+            
+            let tourEvents = tournament.querySelectorAll('li.list__item > h5');
+            let eventIndex = Array.from(tourEvents).findIndex((ev) => {
+                return ev.textContent.replace(/[\\n\s]/g, '') == event;
+            })
 
-            let event = tournament.querySelector('li.list__item > h4').textContent.replace(/[\\n\sEvent:]/g, '');;
+            if (eventIndex == -1) {
+                return null;
+            }
 
             let header = tournament.querySelector('li.list__item > div.media');
             let name = header.querySelector('h4.media__title > a').getAttribute('title');
@@ -114,8 +121,17 @@ const getPlayerData = async (event: string, player: string): Promise<Object> => 
                 return time.getAttribute('datetime');
             })
 
-            console.log(event)
-        })
+            let allMatches = tournament.querySelectorAll('li.list__item > ol.match-group');
+            let matches = Array.from(allMatches)[eventIndex].querySelectorAll('li.match-group__item');
+            let points = Array.from(matches).map((match) => {
+                let pointCont = match.querySelectorAll('ul.points');
+                return Array.from(pointCont).map((cont) => {
+                    return cont.textContent.replace(/[\\n\s]/g, '');
+                })
+            });
+
+            console.log(points);
+        }).filter(tournament => tournament)
     }, event);
 
     //await page.browser().close();
