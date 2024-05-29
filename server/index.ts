@@ -29,12 +29,13 @@ app.get("/api/playerrank", async (req, res) => {
     res.json({ message: data });
 });
 
-app.get("/api/playerbio", async (req, res) => {
+app.get("/api/playerhistory", async (req, res) => {
     const data = await getPlayerData(
         req.query.event as string,
-        req.query.player as string
+        req.query.player as string,
+        parseInt(req.query.years as string),
     );
-    res.json({ message: data });
+    res.json({ message: 'Data retrieved', ...data});
 });
 
 app.get("/api/ranks", async (req, res) => {
@@ -60,12 +61,62 @@ const initPage = async (url: string): Promise<puppeteer.Page> => {
     return page;
 };
 
+const getTournamentData = async (page: puppeteer.Page, event: string): Promise<Object> => {
+
+    return await page.evaluate((event) => {
+        let tournaments = document.querySelectorAll('#tabcontent > div.module--card');
+        return Array.from(tournaments).map((tournament) => {
+            let tourEvents = tournament.querySelectorAll('li.list__item > h5');
+    
+            // verifies that the player played in the specified event in the tournament
+            let eventIndex = Array.from(tourEvents).findIndex((ev) => {
+                return ev.textContent.replace(/[\\n\s]/g, '') == event;
+            })
+            if (eventIndex == -1) {
+                return null;
+            }
+
+            // Gets the name of the tournament
+            let header = tournament.querySelector('li.list__item > div.media');
+            let name = header.querySelector('h4.media__title > a').getAttribute('title');
+            
+            // Get the start and end dates of the tournament
+            let dateElements = header.querySelectorAll('time');
+            let dates = Array.from(dateElements).map((time) => {
+                return time.getAttribute('datetime');
+            })
+
+            // Gets the matches played by the player in the tournament
+            let allMatches = tournament.querySelectorAll('li.list__item > ol.match-group');
+            let matches = Array.from(allMatches)[eventIndex].querySelectorAll('li.match-group__item');
+            let matchData = Array.from(matches).map((match) => {
+                let result = match.querySelector('span.match__status').textContent;
+
+                let pointCont = match.querySelectorAll('ul.points');
+                let scores = Array.from(pointCont).map((cont) => {
+                    return cont.textContent.replace(/(\d{2})/, '$1/').replace(/[\\n\s]/g, '');
+                })
+
+                return {result: result, scores: scores}
+            });
+
+            return {
+                name: name,
+                sdate: dates[0],
+                edate: dates[1],
+                matches: matchData,
+            }
+        }).filter(tournament => tournament)
+    }, event);
+}
+
 // Given a player's name, searches for the player in the search bar and returns a matching result.
-const getPlayerData = async (event: string, player: string): Promise<Object> => {
+const getPlayerData = async (event: string, player: string, years: number): Promise<Object> => {
     
     // Initializes browser and loads page
     let page = await initPage('https://bwf.tournamentsoftware.com/ranking/ranking.aspx?rid=70');
 
+    // Puts the players name into the search box, if no players appear, that player does not exist
     await page.type('input.search-box__field', player);
     try {
         await page.waitForSelector('a.nav-link.media__link', {timeout: 3000});
@@ -73,6 +124,7 @@ const getPlayerData = async (event: string, player: string): Promise<Object> => 
         return 'There are no players with that name.'
     }
 
+    // If the player exists, goes to their profile
     let playerPage = await page.evaluate(() => {
         const playerLink = document.querySelector('a.nav-link.media__link') as HTMLElement;
         return 'https://bwf.tournamentsoftware.com/' + playerLink.getAttribute('href');
@@ -86,9 +138,10 @@ const getPlayerData = async (event: string, player: string): Promise<Object> => 
         XD: 'Mixed',
     }
 
-    page.goto(playerPage);
+    await page.goto(playerPage);
     await page.waitForSelector(`#tabStats${tags[event]}`);
 
+    // Gets the overall win/loss for the player in the specified event
     let data = await page.evaluate((id) => {
         const singlesStats = document.querySelector(id);
         const stats = singlesStats.querySelectorAll('div.flex-container--center > span.list__value-start');
@@ -97,45 +150,13 @@ const getPlayerData = async (event: string, player: string): Promise<Object> => 
         })
     }, `#tabStats${tags[event]}`);
 
+    // Goes to the players tournament profile
     await page.goto(await page.url() + '/tournaments');
 
-    let tournamentData = await page.evaluate((event) => {
-        let tournaments = document.querySelectorAll('#tabcontent > div.module--card');
-        let data = Array.from(tournaments).map((tournament) => {
-            
-            let tourEvents = tournament.querySelectorAll('li.list__item > h5');
-            let eventIndex = Array.from(tourEvents).findIndex((ev) => {
-                return ev.textContent.replace(/[\\n\s]/g, '') == event;
-            })
-
-            if (eventIndex == -1) {
-                return null;
-            }
-
-            let header = tournament.querySelector('li.list__item > div.media');
-            let name = header.querySelector('h4.media__title > a').getAttribute('title');
-            
-            // Get the start and end dates of the tournament
-            let dateElements = header.querySelectorAll('time');
-            let dates = Array.from(dateElements).map((time) => {
-                return time.getAttribute('datetime');
-            })
-
-            let allMatches = tournament.querySelectorAll('li.list__item > ol.match-group');
-            let matches = Array.from(allMatches)[eventIndex].querySelectorAll('li.match-group__item');
-            let points = Array.from(matches).map((match) => {
-                let pointCont = match.querySelectorAll('ul.points');
-                return Array.from(pointCont).map((cont) => {
-                    return cont.textContent.replace(/[\\n\s]/g, '');
-                })
-            });
-
-            console.log(points);
-        }).filter(tournament => tournament)
-    }, event);
+    let tournamentData = await getTournamentData(page, event);
 
     //await page.browser().close();
-    return data;
+    return {overall: data, tournaments: tournamentData};
 }
 
 // Gets the overall rankings of a specific player
