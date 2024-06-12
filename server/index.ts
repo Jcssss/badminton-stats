@@ -61,9 +61,9 @@ const initPage = async (url: string): Promise<puppeteer.Page> => {
     return page;
 };
 
-const getTournamentData = async (page: puppeteer.Page, event: string): Promise<Object> => {
+const getTournamentData = async (page: puppeteer.Page, event: string, playerName: string): Promise<Object[]> => {
 
-    return await page.evaluate((event) => {
+    return await page.evaluate((event, playerName) => {
         let tournaments = document.querySelectorAll('#tabcontent > div.module--card');
         return Array.from(tournaments).map((tournament) => {
             let tourEvents = tournament.querySelectorAll('li.list__item > h5');
@@ -92,12 +92,23 @@ const getTournamentData = async (page: puppeteer.Page, event: string): Promise<O
             let matchData = Array.from(matches).map((match) => {
                 let result = match.querySelector('span.match__status').textContent;
 
+                // Gets the scores
                 let pointCont = match.querySelectorAll('ul.points');
                 let scores = Array.from(pointCont).map((cont) => {
                     return cont.textContent.replace(/(\d{2})/, '$1/').replace(/[\\n\s]/g, '');
                 })
 
-                return {result: result, scores: scores}
+                // Gets the name of the opponents
+                let players = match.querySelectorAll('.match__row:not(:has(span.match__status)) > div > div > span > a > span.nav-link__value');
+                let opponents = Array.from(players).map((player) => player.textContent);
+
+                // Gets the name of the player's partner (if possible)
+                players = match.querySelectorAll('.match__row:has(span.match__status) > div > div > span > a > span.nav-link__value');
+                let team = Array.from(players).map((player) => player.textContent);
+                team = team.filter((name) => name.toLowerCase() != playerName.toLowerCase());
+                let partnerName = (team.length == 1)? team[0] : 'None';
+
+                return {result: result, scores: scores, opponents: opponents, partner: partnerName}
             });
 
             return {
@@ -107,7 +118,7 @@ const getTournamentData = async (page: puppeteer.Page, event: string): Promise<O
                 matches: matchData,
             }
         }).filter(tournament => tournament)
-    }, event);
+    }, event, playerName);
 }
 
 // Given a player's name, searches for the player in the search bar and returns a matching result.
@@ -140,7 +151,10 @@ const getPlayerData = async (event: string, player: string, years: number): Prom
 
     await page.goto(playerPage);
     await page.waitForSelector(`#tabStats${tags[event]}`);
-
+    
+    let playerName = await page.evaluate(() => {
+        return document.querySelector('h2 > span > span.nav-link__value').textContent;
+    })
     // Gets the overall win/loss for the player in the specified event
     let data = await page.evaluate((id) => {
         const singlesStats = document.querySelector(id);
@@ -151,12 +165,17 @@ const getPlayerData = async (event: string, player: string, years: number): Prom
     }, `#tabStats${tags[event]}`);
 
     // Goes to the players tournament profile
-    await page.goto(await page.url() + '/tournaments');
-
-    let tournamentData = await getTournamentData(page, event);
+    let curYear = 2024;
+    let tournamentData = [];
+    let playerUrl = await page.url();
+    for (let i = 0; i < years; i++) {
+        await page.goto(playerUrl + `/tournaments/${curYear}`);
+        tournamentData = tournamentData.concat(await getTournamentData(page, event, playerName));
+        curYear--;
+    }
 
     //await page.browser().close();
-    return {overall: data, tournaments: tournamentData};
+    return {player: playerName, overall: data, tournaments: tournamentData};
 }
 
 // Gets the overall rankings of a specific player
