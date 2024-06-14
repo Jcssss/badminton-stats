@@ -15,6 +15,11 @@ const urls = {
     'XD': 'https://bwf.tournamentsoftware.com/ranking/category.aspx?id=39963&category=476',
 }
 
+type playerRankData = {
+    playerFull: string, 
+    rank: [string, string]
+}
+
 app.listen(PORT, () => {
     // tslint:disable-next-line:no-console
     console.log(`Server listening on ${PORT}`);
@@ -181,10 +186,11 @@ const getPlayerData = async (event: string, player: string, years: number): Prom
 // Gets the overall rankings of a specific player
 const getPlayerRankingData = async (
     event: string, player: string, weeks: number
-): Promise<[[string, string]]> => {
+): Promise<Object> => {
     
     // Initializes browser and loads pages
     let page = await initPage(urls[event]);
+    let playerFull = '';
 
     let rankingData: [string, string][] = [];
     for (let i = 0; i < weeks; i++) {
@@ -192,11 +198,13 @@ const getPlayerRankingData = async (
         await selectWeek(page, i);
 
         // Loops through all pages until reaches the last page or finds the player
+        let data: playerRankData;
         let weekData: [string, string] = ['', ''];
         while (weekData[0] == '') {
 
             // Searches the current page for the player
-            weekData = await findPlayerPointRank(page, player);
+            data = await findPlayerPointRank(page, (playerFull == '')? player: playerFull, event);
+            weekData = data.rank;
 
             // If the player isn't on the page, goes to next page
             if (weekData[0] == '') {
@@ -214,11 +222,12 @@ const getPlayerRankingData = async (
                 }
             }
         }
-        rankingData.push(weekData)
+        playerFull = data.playerFull;
+        rankingData.push(weekData);
     }
 
     await page.browser().close();
-    return rankingData as [[string, string]];
+    return {player: playerFull, rankingData: rankingData};
 };
 
 // Gets the overall rankings of the top X player
@@ -291,28 +300,34 @@ const getNextPageLink = async (page: puppeteer.Page):Promise<string> => {
 }
 
 // Given a page, searches the list of players for the specified player and returns their points and rank
-const findPlayerPointRank = async (page: puppeteer.Page, player: string):Promise<[string, string]> => {
-    
+const findPlayerPointRank = async (
+    page: puppeteer.Page, player: string, event: string
+):Promise<playerRankData> => {
+
     // Extract text content of elements matching the selector
-    const pointRank = await page.evaluate((player): [string, string] => {
-        const links = document.querySelectorAll('table.ruler > tbody > tr > td > a');
+    const pointRank = await page.evaluate((player, event): playerRankData => {
+        let isSingles: boolean = ['MS', 'WS'].includes(event);
+        let selector = (isSingles)? 'table.ruler > tbody > tr > td > a' : 'tr.doubles > td > p:has(img) > a';
+        
+        const links = document.querySelectorAll(selector);
         const playerLink: HTMLElement = Array.from(links).find((link) => {
-            if (link.textContent.toLowerCase() == player.toLowerCase()) {
+            if (link.textContent.toLowerCase().includes(player.toLowerCase())) {
                 return true;
             }
             return false;
         }) as HTMLElement;
         
         if (playerLink) {
-            let player = playerLink.parentNode.parentNode;
-            let rank = player.querySelector('td.rank').textContent;
-            let points = player.querySelector('td.rankingpoints').textContent;
-            return [rank, points];
+            let playerContainer = (isSingles)? playerLink.parentNode.parentNode : playerLink.parentNode.parentNode.parentNode;
+            let playerFull = playerLink.textContent;
+            let rank = playerContainer.querySelector('td.rank').textContent;
+            let points = playerContainer.querySelector('td.rankingpoints').textContent;
+            return {playerFull: playerFull, rank: [rank, points]};
         } else {
-            return ['', ''];
+            return {playerFull: '', rank: ['', '']};
         }
 
-    }, player);
+    }, player, event);
 
     return pointRank;
 }

@@ -5,9 +5,10 @@ function App() {
     const [data, setData] = useState(null);
     
     useEffect(() => {
-        fetch('/api?' + new URLSearchParams({
-            foo: 'Kiana',
-            bar: 'Gallagher'
+        fetch('/api/playerrank?' + new URLSearchParams({
+            event: 'XD',
+            player: 'Yuta Watan',
+            weeks: '3'
         }))
         .then((res) => res.json())
         .then((data) => setData(data.message));
