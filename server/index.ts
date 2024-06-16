@@ -31,7 +31,7 @@ app.get("/api/playerrank", async (req, res) => {
         req.query.player as string,
         parseInt(req.query.weeks as string),
     );
-    res.json({ message: data });
+    res.json({ message: 'Ranks retrieved', ...data });
 });
 
 app.get("/api/playerhistory", async (req, res) => {
@@ -55,7 +55,7 @@ app.get("/api/ranks", async (req, res) => {
 // Initializes a browser window for puppeteer
 const initPage = async (url: string): Promise<puppeteer.Page> => {  
     const browser = await puppeteer.launch({
-        headless: false,
+        //headless: false,
     });
 
     let page = await browser.newPage();
