@@ -15,9 +15,15 @@ const urls = {
     'XD': 'https://bwf.tournamentsoftware.com/ranking/category.aspx?id=39963&category=476',
 }
 
+type weekRankInfo = {
+    week?: string,
+    rank: string,
+    points: string,
+}
+
 type playerRankData = {
     playerFull: string, 
-    rank: [string, string]
+    rank: weekRankInfo
 }
 
 app.listen(PORT, () => {
@@ -55,7 +61,7 @@ app.get("/api/ranks", async (req, res) => {
 // Initializes a browser window for puppeteer
 const initPage = async (url: string): Promise<puppeteer.Page> => {  
     const browser = await puppeteer.launch({
-        //headless: false,
+        headless: false,
     });
 
     let page = await browser.newPage();
@@ -75,15 +81,24 @@ const getTournamentData = async (page: puppeteer.Page, event: string, playerName
     
             // verifies that the player played in the specified event in the tournament
             let eventIndex = Array.from(tourEvents).findIndex((ev) => {
-                return ev.textContent.replace(/[\\n\s]/g, '') == event;
+                let text = ev.textContent;
+                return text && text.replace(/[\\n\s]/g, '') == event;
             })
             if (eventIndex == -1) {
-                return null;
+                return {};
             }
 
             // Gets the name of the tournament
             let header = tournament.querySelector('li.list__item > div.media');
-            let name = header.querySelector('h4.media__title > a').getAttribute('title');
+            if (!header) {
+                return {};
+            }
+
+            let nameContainer = header.querySelector('h4.media__title > a');
+            if (!nameContainer) {
+                return {};
+            }
+            let name = nameContainer.getAttribute('title');
             
             // Get the start and end dates of the tournament
             let dateElements = header.querySelectorAll('time');
@@ -95,12 +110,17 @@ const getTournamentData = async (page: puppeteer.Page, event: string, playerName
             let allMatches = tournament.querySelectorAll('li.list__item > ol.match-group');
             let matches = Array.from(allMatches)[eventIndex].querySelectorAll('li.match-group__item');
             let matchData = Array.from(matches).map((match) => {
-                let result = match.querySelector('span.match__status').textContent;
+                let resultContainer = match.querySelector('span.match__status');
+                let result;
+                if (resultContainer){
+                    result = resultContainer.textContent;
+                }
 
                 // Gets the scores
                 let pointCont = match.querySelectorAll('ul.points');
                 let scores = Array.from(pointCont).map((cont) => {
-                    return cont.textContent.replace(/(\d{2})/, '$1/').replace(/[\\n\s]/g, '');
+                    let text = cont.textContent;
+                    return text && text.replace(/(\d{2})/, '$1/').replace(/[\\n\s]/g, '');
                 })
 
                 // Gets the name of the opponents
@@ -110,7 +130,7 @@ const getTournamentData = async (page: puppeteer.Page, event: string, playerName
                 // Gets the name of the player's partner (if possible)
                 players = match.querySelectorAll('.match__row:has(span.match__status) > div > div > span > a > span.nav-link__value');
                 let team = Array.from(players).map((player) => player.textContent);
-                team = team.filter((name) => name.toLowerCase() != playerName.toLowerCase());
+                team = team.filter((name) => name && name.toLowerCase() != playerName.toLowerCase());
                 let partnerName = (team.length == 1)? team[0] : 'None';
 
                 return {result: result, scores: scores, opponents: opponents, partner: partnerName}
@@ -157,25 +177,40 @@ const getPlayerData = async (event: string, player: string, years: number): Prom
     await page.goto(playerPage);
     await page.waitForSelector(`#tabStats${tags[event]}`);
     
-    let playerName = await page.evaluate(() => {
-        return document.querySelector('h2 > span > span.nav-link__value').textContent;
+    let playerName = await page.evaluate((): string => {
+        let playerNameContainer = document.querySelector('h2 > span > span.nav-link__value');
+        if (playerNameContainer) {
+            let text = playerNameContainer.textContent;
+            return (text)? text : '';
+        }
+        return '';
     })
+    
     // Gets the overall win/loss for the player in the specified event
     let data = await page.evaluate((id) => {
         const singlesStats = document.querySelector(id);
+        if (!singlesStats) {
+            return ['No Data'];
+        }
+
         const stats = singlesStats.querySelectorAll('div.flex-container--center > span.list__value-start');
         return Array.from(stats).map((stat) => {
-            return stat.textContent.replace(/[\\n\s]/g, '');
+            let text = stat.textContent;
+            if (text) {
+                return text.replace(/[\\n\s]/g, '');
+            }
+            return '';
         })
     }, `#tabStats${tags[event]}`);
 
     // Goes to the players tournament profile
     let curYear = 2024;
-    let tournamentData = [];
+    let tournamentData: Object[] = [];
     let playerUrl = await page.url();
     for (let i = 0; i < years; i++) {
         await page.goto(playerUrl + `/tournaments/${curYear}`);
-        tournamentData = tournamentData.concat(await getTournamentData(page, event, playerName));
+        let yearData = await getTournamentData(page, event, playerName)
+        tournamentData = tournamentData.concat(yearData);
         curYear--;
     }
 
@@ -187,32 +222,39 @@ const getPlayerData = async (event: string, player: string, years: number): Prom
 const getPlayerRankingData = async (
     event: string, player: string, weeks: number
 ): Promise<Object> => {
-    
+
     // Initializes browser and loads pages
     let page = await initPage(urls[event]);
-    let playerFull = '';
+    //await page.exposeFunction("getText", getText);
 
-    let rankingData: [string, string][] = [];
+    let playerFull = '';
+    let rankingData: weekRankInfo[] = [];
+    let date: string = '';
+
     for (let i = 0; i < weeks; i++) {
         
-        await selectWeek(page, i);
+        date = await selectWeek(page, i);
 
         // Loops through all pages until reaches the last page or finds the player
-        let data: playerRankData;
-        let weekData: [string, string] = ['', ''];
-        while (weekData[0] == '') {
+        let data: playerRankData = {playerFull: '', rank: {rank: '', points: ''}};
+        let weekData: weekRankInfo = {week: date, rank: '', points: ''};
+        while (weekData.rank == '') {
 
             // Searches the current page for the player
-            data = await findPlayerPointRank(page, (playerFull == '')? player: playerFull, event);
-            weekData = data.rank;
+            let playerName = (playerFull == '')? player : playerFull;
+            console.log(playerName);
+            data = await findPlayerPointRank(page, playerName, event);
+            weekData.rank = data.rank.rank;
+            weekData.points = data.rank.points;
 
             // If the player isn't on the page, goes to next page
-            if (weekData[0] == '') {
+            if (weekData.rank == '') {
                 let pageLink = await getNextPageLink(page);
 
                 // If there are no next pages, informs the user
                 if (pageLink === '') {
-                    rankingData.push(['', '']);
+                    rankingData.push({week: date, rank: '', points: ''});
+                    break;
                 
                 // If there is another page, moves to that page
                 } else {
@@ -237,6 +279,7 @@ const getOverallRankingData = async (
     
     // Initializes browser and loads pages
     let page = await initPage(urls[event]);
+    //await page.exposeFunction("getText", getText);
 
     let rankingData: string[][][] = [];
     for (let i = 0; i < weeks; i++) {
@@ -252,7 +295,10 @@ const getOverallRankingData = async (
             // blank row, and page number footer
             playersOnPage = await page.evaluate(() => {
                 const playerContainer = document.querySelector('table.ruler > tbody');
-                return playerContainer.childElementCount - 3;
+                if (playerContainer) {
+                    return playerContainer.childElementCount - 3;
+                }
+                return 0;
             })
 
             // Searches the current page for the player
@@ -289,7 +335,11 @@ const getNextPageLink = async (page: puppeteer.Page):Promise<string> => {
     
     const nextPageLink = await page.evaluate((): string => {
         const pageNumberCont = document.querySelector('span.pagenrs');
-        let nextPageAnchor = pageNumberCont.querySelector('a.page_next');
+        let nextPageAnchor: Element|null = null;
+
+        if (pageNumberCont) {
+            nextPageAnchor = pageNumberCont.querySelector('a.page_next');
+        }
         if (nextPageAnchor) {
             return 'https://bwf.tournamentsoftware.com/'  + nextPageAnchor.getAttribute('href');
         }
@@ -297,6 +347,11 @@ const getNextPageLink = async (page: puppeteer.Page):Promise<string> => {
     });
 
     return nextPageLink;
+}
+
+const getText = (el: Element | null): string => {
+    let text = el && el.textContent;
+    return (text)? text : '';
 }
 
 // Given a page, searches the list of players for the specified player and returns their points and rank
@@ -311,20 +366,33 @@ const findPlayerPointRank = async (
         
         const links = document.querySelectorAll(selector);
         const playerLink: HTMLElement = Array.from(links).find((link) => {
-            if (link.textContent.toLowerCase().includes(player.toLowerCase())) {
+            let text = link.textContent;
+            if (text && text.toLowerCase().includes(player.toLowerCase())) {
                 return true;
             }
             return false;
         }) as HTMLElement;
         
         if (playerLink) {
-            let playerContainer = (isSingles)? playerLink.parentNode.parentNode : playerLink.parentNode.parentNode.parentNode;
-            let playerFull = playerLink.textContent;
-            let rank = playerContainer.querySelector('td.rank').textContent;
-            let points = playerContainer.querySelector('td.rankingpoints').textContent;
-            return {playerFull: playerFull, rank: [rank, points]};
+            let playerContainer: Element | null;
+            playerContainer = playerLink.parentNode as Element
+            playerContainer = playerContainer && playerContainer.parentNode as Element
+            playerContainer = (isSingles)? playerContainer : playerContainer && playerContainer.parentNode as Element;
+            
+            let playerFull = playerLink && playerLink.textContent;
+            playerFull = (playerFull)? playerFull : '';
+            
+            let rankContainer = playerContainer && playerContainer.querySelector('td.rank');
+            let rank = rankContainer && rankContainer.textContent;
+            rank = (rank)? rank : '';
+            
+            let pointsContainer = playerContainer && playerContainer.querySelector('td.rankingpoints');
+            let points = pointsContainer && pointsContainer.textContent;
+            points = (points)? points : '';
+
+            return {playerFull: playerFull, rank: {rank: rank, points: points}};
         } else {
-            return {playerFull: '', rank: ['', '']};
+            return {playerFull: '', rank: {rank: '', points: ''}};
         }
 
     }, player, event);
@@ -338,18 +406,30 @@ const findWeeklyPointRank = async (
 ): Promise<string[][]> => {
     
     let data: string[][] = [];
-    
+
     for (let playerNum = 0; playerNum < players; playerNum++) {
         let rankData = await page.evaluate((playerNum): string[] => {
             let curPlayer = document.querySelector(`table.ruler > tbody > tr:nth-child(${playerNum + 3})`);
             
             if (curPlayer) {
-                let rank = curPlayer.querySelector('td.rank').textContent;
-                let points = curPlayer.querySelector('td.rankingpoints').textContent;
+                let rankContainer = curPlayer.querySelector('td.rank')
+                let rank = rankContainer && rankContainer.textContent;
+                rank = (rank)? rank : '';
+                
+                let pointsContainer = curPlayer.querySelector('td.rankingpoints')
+                let points = pointsContainer && pointsContainer.textContent;
+                points = (points)? points : '';
+
                 let flags = curPlayer.querySelectorAll('span.flag');
-                let country = flags[0].textContent.replace('[', '').replace(/\]\s?/, '');
-                let nameAnchors = Array.from(flags).map((flag) => flag.parentNode.querySelector('a'));
-                let names = nameAnchors.map((anch) => anch.textContent);
+                let country = flags[0] && flags[0].textContent;
+                country = (country)? country : ''
+                country = country.replace('[', '').replace(/\]\s?/, '');
+                
+                let nameAnchors = Array.from(flags).map((flag) => {
+                    let parent = flag.parentNode;
+                    return parent && parent.querySelector('a');
+                });
+                let names = nameAnchors.map((anch) => getText(anch));
                 return [country, ...names, rank, points]; 
             } else {
                 return [];
@@ -362,8 +442,17 @@ const findWeeklyPointRank = async (
     return data;
 }
 
-const selectWeek = async (page: puppeteer.Page, week: number) => {
+const selectWeek = async (page: puppeteer.Page, week: number): Promise<string> => {
     await page.click('a.chosen-single');
     await page.click(`.chosen-results > li:nth-child(${week + 1})`);
     await page.waitForSelector('a.chosen-single');
+
+    let weekDate = await page.evaluate (() => {
+        let dateContainer = document.querySelector('a.chosen-single');
+        let date = dateContainer && dateContainer.textContent;
+        date = (date)? date : '';
+        return date;
+    })
+
+    return weekDate.replace(/\s*[\n]\s*/g, '');
 }
