@@ -1,12 +1,13 @@
 import './App.css';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Line, LineChart, XAxis, YAxis } from 'recharts';
 import Filter from './menu/Filter';
+import { FilterSettings } from './menu/FilterSettings';
 
 function App() {
     const [data, setData] = useState(null);
-    const [filterValues, setFilterValues] = useState({playerName: '', event: '', weeks: 0, years: 0});
+    const [filterValues, setFilterValues] = useState({playerName: '', event: 'MS', amount: 1});
     const [pageState, setPageState] = useState('Filter');
-    const navOptions = ['Overall Ranking History', 'Player Tournament History', 'Player Ranking History'];
     const onSubmit = () => {
         getPlayerRankData();
         setPageState('Data');
@@ -23,18 +24,22 @@ function App() {
         fetch('/api/playerrank?' + new URLSearchParams({
             event: filterValues.event,
             player: filterValues.playerName,
-            weeks: '3'
+            weeks: `${filterValues.amount}`,
         }))
         .then((res) => res.json())
         .then((data) => {
-            setData(data)
+            setData(data.rankingData)
         });
     }
-
+    
     if (pageState == 'Filter') {
         return (
             <Filter
-                include={{}}
+                include={{
+                    amount: 'Years',
+                    playerName: true,
+                    event: true,
+                }}
                 filterValues={filterValues}
                 setFilterValues={setFilterValues}
                 onSubmit={onSubmit}
@@ -44,11 +49,21 @@ function App() {
         return (
             <div>
                 <div className='navigation-container'>
-                    {navOptions.map((option) => {
+                    {Object.keys(FilterSettings).map((option) => {
                         return <div>{option}</div>
                     })}
                 </div>
-                <div> {(data === null)? getLoader() : JSON.stringify(data)} </div>
+                <div> {(data === null)? 
+                    getLoader() : 
+                    <>
+                        <LineChart width={400} height={400} data={data}>
+                            <XAxis dataKey="date"/>
+                            <YAxis reversed={true}/>
+                            <Line type="monotone" dataKey="rank" stroke="#8884d8" />
+                        </LineChart>
+                        <div>{JSON.stringify(data)}</div>
+                    </>
+                } </div>
             </div>
         );
     }
