@@ -1,4 +1,4 @@
-import { useEffect, ReactElement } from 'react';
+import React, { useEffect, ReactElement } from 'react';
 
 type includeType = {
     playerName?: boolean,
@@ -25,6 +25,7 @@ const Filter = ({include, filterValues, setFilterValues, onSubmit}: propTypes) =
     const getPlayerName = (): ReactElement => {
         return (include.playerName)? 
             <input 
+                className='filter-option'
                 type='text' 
                 value={filterValues.playerName} 
                 placeholder='Player Name...'
@@ -37,12 +38,13 @@ const Filter = ({include, filterValues, setFilterValues, onSubmit}: propTypes) =
     const getEvent = (): ReactElement => {
         return (include.event)? 
             <select
+                className='filter-option'
                 onChange={(e) => {
                     setFilterValues((old: filterType) => ({...old, event: e.target.value}))
                 }}
             >
                 {events.map((event) => {
-                    return <option value={event}>{event}</option>
+                    return <option key={event} value={event}>{event}</option>
                 })}
             </select> : <></>
     }
@@ -50,6 +52,7 @@ const Filter = ({include, filterValues, setFilterValues, onSubmit}: propTypes) =
     const getAmount = (): ReactElement => {
         return (include.amount)? 
             <input 
+                className='filter-option'
                 type='number'
                 placeholder={include.amount + '...'}
                 min='1'
@@ -61,11 +64,13 @@ const Filter = ({include, filterValues, setFilterValues, onSubmit}: propTypes) =
 
     return (
         <div className='filter-container'>
-            {getEvent()}
-            {getPlayerName()}
-            {getAmount()}
-            <div>{JSON.stringify(filterValues)}</div>
-            <button onClick={() => {onSubmit()}}>Submit</button>
+            <div className='filter-option-container'>
+                {getEvent()}
+                {getPlayerName()}
+                {getAmount()}
+            </div>
+            {/* <div>{JSON.stringify(filterValues)}</div> */}
+            <button className='filter-submit' onClick={() => {onSubmit()}}>Submit</button>
         </div>
     );
 }

@@ -230,8 +230,14 @@ const getPlayerRankingData = async (
     let playerFull = '';
     let rankingData: weekRankInfo[] = [];
     let date: string = '';
+    let highestRank = 99999999;
+    let lowestRank = -1;
+    let highestPoints = 0;
+    let lowestPoints = 9999999999;
+    let totalPoints = 0;
+    let totalRank = 0;
 
-    for (let i = 0; i < weeks; i++) {
+    for (let i = weeks; i > 0; i--) {
         
         date = await selectWeek(page, i);
 
@@ -242,7 +248,6 @@ const getPlayerRankingData = async (
 
             // Searches the current page for the player
             let playerName = (playerFull == '')? player : playerFull;
-            console.log(playerName);
             data = await findPlayerPointRank(page, playerName, event);
             weekData.rank = data.rank.rank;
             weekData.points = data.rank.points;
@@ -264,12 +269,28 @@ const getPlayerRankingData = async (
                 }
             }
         }
+        let weekPoints = Number(weekData.points);
+        let weekRank = Number(weekData.rank);
+
+        lowestRank = Math.max(weekRank, lowestRank);
+        highestRank = Math.min(weekRank, highestRank);
+        totalRank += weekRank;
+
+        lowestPoints = Math.min(weekPoints, lowestPoints);
+        highestPoints = Math.max(weekPoints, highestPoints);
+        totalPoints += weekPoints;
+
         playerFull = data.playerFull;
         rankingData.push(weekData);
     }
 
     await page.browser().close();
-    return {player: playerFull, rankingData: rankingData};
+    return {
+        player: playerFull, 
+        avgPoints: Math.round(totalPoints / weeks * 100) / 100,  highestPoints: highestPoints, lowestPoints: lowestPoints,
+        avgRank: Math.round(totalRank / weeks * 100) / 100, highestRank: highestRank, lowestRank: lowestRank,
+        rankingData: rankingData
+    };
 };
 
 // Gets the overall rankings of the top X player
@@ -282,7 +303,7 @@ const getOverallRankingData = async (
     //await page.exposeFunction("getText", getText);
 
     let rankingData: string[][][] = [];
-    for (let i = 0; i < weeks; i++) {
+    for (let i = weeks; i > 0; i--) {
         
         await selectWeek(page, i);
 
@@ -443,7 +464,9 @@ const findWeeklyPointRank = async (
 }
 
 const selectWeek = async (page: puppeteer.Page, week: number): Promise<string> => {
+    await page.waitForSelector('a.chosen-single');
     await page.click('a.chosen-single');
+
     await page.click(`.chosen-results > li:nth-child(${week + 1})`);
     await page.waitForSelector('a.chosen-single');
 

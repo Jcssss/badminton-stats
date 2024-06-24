@@ -3,13 +3,13 @@ export const FilterSettings = {
         filterSettings: {
             playerName: true,
             event: true,
-            amount: 'Number of Years',
+            amount: 'Years',
         }
     },
     'Event': {
         filterSettings: {
             event: true,
-            amount: 'Number of Players',
+            amount: 'Players',
         }
     }
 }
