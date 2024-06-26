@@ -1,8 +1,9 @@
 import React from 'react';
 import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { graphDataType } from '../types';
 
 type propTypes = {
-    graphData: Object[]
+    graphData: graphDataType,
 }
 
 const Chart = ({graphData}: propTypes) => {
@@ -20,7 +21,7 @@ const Chart = ({graphData}: propTypes) => {
                 }}
             >
                 <CartesianGrid strokeDasharray="3 3" fill='white'/>
-                <XAxis allowDecimals={false} dataKey="week" stroke='white' padding={{right: 10, left: 10}} angle={-15} textAnchor='middle'/>
+                <XAxis allowDecimals={false} dataKey="week" stroke='white' height={40} padding={{right: 10, left: 10}} angle={15} tick={{dy: 10}} textAnchor='middle'/>
                 <YAxis allowDecimals={false} domain={[1, 'dataMax + 2']} reversed={true} stroke='white' padding={{top: 10, bottom: 10}}/>
                 <Line type="monotone" dataKey="rank" stroke="#8884d8" />
             </LineChart>

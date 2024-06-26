@@ -3,18 +3,19 @@ import React, { useEffect, useState } from 'react';
 import Filter from './menu/Filter';
 import { FilterSettings } from './menu/FilterSettings';
 import LoadingWindow from './loading/LoadingWindow';
-import Chart from './data/Chart';
-
-type graphDataType = Object[]
+import PlayerDisplay from './data/PlayerDisplay';
+import { playerGraphData } from './types';
 
 function App() {
-    const [graphData, setGraphData] = useState<graphDataType>([{}]);
+    const [graphData, setGraphData] = useState<playerGraphData>({games: [], rank: []});
+    const [summaryData, setSummaryData] = useState<[string, any][]>([]);
     const [filterValues, setFilterValues] = useState({playerName: '', event: 'MS', amount: 1});
     const [filterState, setFilterState] = useState('Player');
     const [pageState, setPageState] = useState('Filter');
 
     const onSubmit = () => {
-        getPlayerRankData();
+        //getPlayerRankData();
+        getPlayerGamesData();
         setPageState('Loading');
     }
 
@@ -22,12 +23,45 @@ function App() {
         fetch('/api/playerrank?' + new URLSearchParams({
             event: filterValues.event,
             player: filterValues.playerName,
-            weeks: `${filterValues.amount}`,
+            weeks: `${filterValues.amount * 52}`,
         }))
         .then((res) => res.json())
         .then((data) => {
             console.log(JSON.stringify(data));
-            setGraphData(data.rankingData)
+            let newSummaryData:[string, any][] = [
+                ['Name', data.player],
+                ['Average Points', data.avgPoints],
+                ['Highest Points', data.highestPoints],
+                ['Lowest Points', data.lowestPoints],
+                ['Average Rank', data.avgRank],
+                ['Highest Rank', data.highestRank],
+                ['Lowest Rank', data.lowestRank],
+            ]
+            setSummaryData(newSummaryData);
+            setGraphData((oldData) => ({...oldData, rank: data.rankingData}));
+        }).then(() => setPageState('Data'));
+    }
+
+    const getPlayerGamesData = () => {
+        fetch('/api/playerhistory?' + new URLSearchParams({
+            event: filterValues.event,
+            player: filterValues.playerName,
+            years: `${filterValues.amount}`,
+        }))
+        .then((res) => res.json())
+        .then((data) => {
+            console.log(JSON.stringify(data));
+            // let newSummaryData:[string, any][] = [
+            //     ['Name', data.player],
+            //     ['Average Points', data.avgPoints],
+            //     ['Highest Points', data.highestPoints],
+            //     ['Lowest Points', data.lowestPoints],
+            //     ['Average Rank', data.avgRank],
+            //     ['Highest Rank', data.highestRank],
+            //     ['Lowest Rank', data.lowestRank],
+            // ]
+            // setSummaryData(newSummaryData);
+            // setGraphData(data.rankingData)
         }).then(() => setPageState('Data'));
     }
     
@@ -58,7 +92,12 @@ function App() {
     } else if (pageState == 'Loading') {
         return <LoadingWindow/>
     } else {
-        return <Chart graphData={graphData}/>;
+        return (
+            <PlayerDisplay
+                graphData={graphData}
+                summaryData={summaryData}
+            />
+        );
     }
 }
 
