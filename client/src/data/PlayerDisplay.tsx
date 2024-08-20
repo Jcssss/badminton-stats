@@ -1,15 +1,16 @@
 import React from 'react';
 import Chart from './Chart';
-import { playerGraphData } from '../types';
+import { PlayerGraphData, PlayerSummaryData } from '../types';
 
-type propTypes = {
-    graphData: playerGraphData,
-    summaryData: [string, any][]
+type PropTypes = {
+    graphData: PlayerGraphData,
+    summaryData: PlayerSummaryData
 }
 
-const PlayerDisplay = ({graphData, summaryData}: propTypes) => {
+const PlayerDisplay = ({graphData, summaryData}: PropTypes) => {
     return (
         <div className='data-container player'>
+            <div>{JSON.stringify(graphData)}</div>
             <Chart graphData={graphData.rank}/>
         </div>
     );

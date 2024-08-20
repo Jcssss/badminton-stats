@@ -1,12 +1,12 @@
 import React from 'react';
 import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { graphDataType } from '../types';
+import { GraphData } from '../types';
 
-type propTypes = {
-    graphData: graphDataType,
+type PropTypes = {
+    graphData: GraphData,
 }
 
-const Chart = ({graphData}: propTypes) => {
+const Chart = ({graphData}: PropTypes) => {
     return (
         <div> 
             <LineChart 

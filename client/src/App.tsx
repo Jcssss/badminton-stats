@@ -2,21 +2,21 @@ import './App.css';
 import React, { useEffect, useState } from 'react';
 import Filter from './menu/Filter';
 import { FilterSettings } from './menu/FilterSettings';
-import LoadingWindow from './loading/LoadingWindow';
+import LoadingWindow from './menu/LoadingWindow';
 import PlayerDisplay from './data/PlayerDisplay';
-import { playerGraphData } from './types';
+import { PlayerGraphData, PlayerSummaryData } from './types';
 
 function App() {
-    const [graphData, setGraphData] = useState<playerGraphData>({games: [], rank: []});
-    const [summaryData, setSummaryData] = useState<[string, any][]>([]);
+    const [graphData, setGraphData] = useState<PlayerGraphData>({games: [], rank: []});
+    const [summaryData, setSummaryData] = useState<PlayerSummaryData>({});
     const [filterValues, setFilterValues] = useState({playerName: '', event: 'MS', amount: 1});
     const [filterState, setFilterState] = useState('Player');
     const [pageState, setPageState] = useState('Filter');
 
     const onSubmit = () => {
-        //getPlayerRankData();
-        getPlayerGamesData();
         setPageState('Loading');
+        //getPlayerRankData();
+        //getPlayerGamesData();
     }
 
     const getPlayerRankData = () => {
@@ -28,16 +28,20 @@ function App() {
         .then((res) => res.json())
         .then((data) => {
             console.log(JSON.stringify(data));
-            let newSummaryData:[string, any][] = [
-                ['Name', data.player],
-                ['Average Points', data.avgPoints],
-                ['Highest Points', data.highestPoints],
-                ['Lowest Points', data.lowestPoints],
-                ['Average Rank', data.avgRank],
-                ['Highest Rank', data.highestRank],
-                ['Lowest Rank', data.lowestRank],
-            ]
-            setSummaryData(newSummaryData);
+            let newSummaryData: PlayerSummaryData = {
+                name: data.player,
+                points: {
+                    avg: data.avgPoints,
+                    max: data.highestPoints,
+                    min: data.lowestPoints
+                },
+                rank: {
+                    avg: data.avgRank,
+                    max: data.highestRank,
+                    min: data.lowestRank
+                }
+            }
+            setSummaryData((oldSummary) => ({...oldSummary, ...newSummaryData}));
             setGraphData((oldData) => ({...oldData, rank: data.rankingData}));
         }).then(() => setPageState('Data'));
     }
@@ -51,17 +55,14 @@ function App() {
         .then((res) => res.json())
         .then((data) => {
             console.log(JSON.stringify(data));
-            // let newSummaryData:[string, any][] = [
-            //     ['Name', data.player],
-            //     ['Average Points', data.avgPoints],
-            //     ['Highest Points', data.highestPoints],
-            //     ['Lowest Points', data.lowestPoints],
-            //     ['Average Rank', data.avgRank],
-            //     ['Highest Rank', data.highestRank],
-            //     ['Lowest Rank', data.lowestRank],
-            // ]
-            // setSummaryData(newSummaryData);
-            // setGraphData(data.rankingData)
+            let newSummaryData:PlayerSummaryData = {
+                name: data.player,
+                country: data.country,
+                overallWinLoss: data.overallWinLoss,
+                yearlyWinLoss: data.yearlyWinLoss,
+            }
+            setSummaryData((oldSummary) => ({...oldSummary, ...newSummaryData}));
+            setGraphData((oldData) => ({...oldData, games: data.tournamentData}));
         }).then(() => setPageState('Data'));
     }
     
@@ -85,7 +86,7 @@ function App() {
                     include={FilterSettings[filterState].filterSettings}
                     filterValues={filterValues}
                     setFilterValues={setFilterValues}
-                    onSubmit={onSubmit}
+                    getPlayerData={onSubmit}
                 ></Filter>
             </div>
         )
