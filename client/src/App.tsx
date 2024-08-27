@@ -4,26 +4,25 @@ import Filter from './menu/Filter';
 import { FilterSettings } from './menu/FilterSettings';
 import LoadingWindow from './menu/LoadingWindow';
 import PlayerDisplay from './data/PlayerDisplay';
-import { PlayerGraphData, PlayerSummaryData } from './types';
+import { PlayerGraphData, PlayerSummaryData, EventType } from './types';
 
 function App() {
     const [graphData, setGraphData] = useState<PlayerGraphData>({games: [], rank: []});
     const [summaryData, setSummaryData] = useState<PlayerSummaryData>({});
-    const [filterValues, setFilterValues] = useState({playerName: '', event: 'MS', amount: 1});
     const [filterState, setFilterState] = useState('Player');
     const [pageState, setPageState] = useState('Filter');
 
-    const onSubmit = () => {
+    const onSubmit = (event: EventType, playerName: string) => {
         setPageState('Loading');
-        //getPlayerRankData();
-        //getPlayerGamesData();
+        getPlayerRankData(event, playerName);
+        getPlayerGamesData(event, playerName);
     }
 
-    const getPlayerRankData = () => {
+    const getPlayerRankData = (event: EventType, playerName: string) => {
         fetch('/api/playerrank?' + new URLSearchParams({
-            event: filterValues.event,
-            player: filterValues.playerName,
-            weeks: `${filterValues.amount * 52}`,
+            event: event,
+            player: playerName,
+            weeks: '10',
         }))
         .then((res) => res.json())
         .then((data) => {
@@ -46,23 +45,23 @@ function App() {
         }).then(() => setPageState('Data'));
     }
 
-    const getPlayerGamesData = () => {
+    const getPlayerGamesData = (event: EventType, playerName: string) => {
         fetch('/api/playerhistory?' + new URLSearchParams({
-            event: filterValues.event,
-            player: filterValues.playerName,
-            years: `${filterValues.amount}`,
+            event: event,
+            player: playerName,
+            years: '1',
         }))
         .then((res) => res.json())
         .then((data) => {
             console.log(JSON.stringify(data));
-            let newSummaryData:PlayerSummaryData = {
+            let newSummaryData: PlayerSummaryData = {
                 name: data.player,
                 country: data.country,
                 overallWinLoss: data.overallWinLoss,
                 yearlyWinLoss: data.yearlyWinLoss,
             }
             setSummaryData((oldSummary) => ({...oldSummary, ...newSummaryData}));
-            setGraphData((oldData) => ({...oldData, games: data.tournamentData}));
+            setGraphData((oldData) => ({...oldData, games: data.tournaments}));
         }).then(() => setPageState('Data'));
     }
     
@@ -84,8 +83,6 @@ function App() {
                 </div>
                 <Filter
                     include={FilterSettings[filterState].filterSettings}
-                    filterValues={filterValues}
-                    setFilterValues={setFilterValues}
                     getPlayerData={onSubmit}
                 ></Filter>
             </div>

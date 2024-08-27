@@ -93,7 +93,11 @@ const getYearlyTournamentData = async (
             // Get the start and end dates of the tournament
             let dateElements = header.querySelectorAll('time');
             let dates = Array.from(dateElements).map((time) => {
-                return time.getAttribute('datetime');
+                let datetime = time.getAttribute('datetime');
+                if (datetime) {
+                    return datetime.split(' ')[0];
+                }
+                return '';
             })
 
             // Gets the matches played by the player in the tournament
@@ -129,6 +133,7 @@ const getYearlyTournamentData = async (
                 return {result: result, scores: scores, opponents: opponents, partner: partnerName}
             });
 
+            // recalculates aggregate data
             let totalTournamentMatches = matchData.length;
             totalMatchesWon += totalTournamentWins;
             totalMatchesPlayed += totalTournamentMatches;

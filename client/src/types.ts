@@ -11,6 +11,8 @@ export type AggregateNumbers = {
     min: number,
 }
 
+export type EventType = 'MS' | 'MD' | 'WS' | 'WD' | 'XD';
+
 export type PlayerSummaryData = {
     name?: string,
     country?: string, 

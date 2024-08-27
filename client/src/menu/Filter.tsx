@@ -9,20 +9,19 @@ type includeType = {
 type filterType = {
     playerName: string,
     event: string,
-    amount: number,
 }
 
 type propTypes = {
     include: includeType,
-    filterValues: filterType,
-    setFilterValues: Function,
     getPlayerData: Function,
 }
 
-const Filter = ({include, filterValues, setFilterValues, getPlayerData}: propTypes) => {
+const Filter = ({include, getPlayerData}: propTypes) => {
     const events = ['MS', 'WS', 'MD', 'WD', 'XD'];
     const [searchResults, setSearchResults] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState<string|null>(null);
+    const [isSearching, setIsSearching] = useState(false);
+    const [filterValues, setFilterValues] = useState({playerName: '', event: 'MS'});
 
     const searchForPlayer = (searchString: string) => {
         fetch('/api/playersearch?' + new URLSearchParams({
@@ -31,7 +30,8 @@ const Filter = ({include, filterValues, setFilterValues, getPlayerData}: propTyp
         .then((res) => res.json())
         .then((data) => {
             setSearchResults(data.data.players);
-        });
+        })
+        .then(() => setIsSearching(false));
     }
 
     const getPlayerName = (): ReactElement => {
@@ -61,21 +61,31 @@ const Filter = ({include, filterValues, setFilterValues, getPlayerData}: propTyp
             </select> : <></>
     }
 
-    const getAmount = (): ReactElement => {
-        return (include.amount)? 
-            <input 
-                className='filter-option'
-                type='number'
-                placeholder={include.amount + '...'}
-                min='1'
-                onChange={(e) => {
-                    setFilterValues((old: filterType) => ({...old, amount: e.target.value}))
-                }}
-            ></input> : <></>
-    }
+    // const getAmount = (): ReactElement => {
+    //     return (include.amount)? 
+    //         <input 
+    //             className='filter-option'
+    //             type='number'
+    //             placeholder={include.amount + '...'}
+    //             min='1'
+    //             onChange={(e) => {
+    //                 setFilterValues((old: filterType) => ({...old, amount: e.target.value}))
+    //             }}
+    //         ></input> : <></>
+    // }
 
     const displayResultsHeader = () => {
-        if (searchTerm && searchResults.length != 0) {
+        if (isSearching) {
+            return <div className='results-loading-container'>
+                <div>Searching for player...</div>
+                <div className='loader'></div>
+            </div>
+        } else if (searchTerm && searchResults.length == 1) {
+            return <>
+                <div>{`1 player with name containing '${searchTerm}'.`}</div>
+                <div>Select a player to view their data.</div>
+            </>
+        } else if (searchTerm && searchResults.length != 0) {
             return <>
                 <div>{`${searchResults.length} players with name containing '${searchTerm}'.`}</div>
                 <div>Select a player to view their data.</div>
@@ -86,7 +96,7 @@ const Filter = ({include, filterValues, setFilterValues, getPlayerData}: propTyp
                 <div>Please try another search.</div>
             </>
         } else {
-            return <div>Enter a players name to perform a search.</div>
+            return <div>Enter a player's name to perform a search.</div>
         }
     }
 
@@ -96,12 +106,13 @@ const Filter = ({include, filterValues, setFilterValues, getPlayerData}: propTyp
                 <div className='filter-option-container'>
                     {getEvent()}
                     {getPlayerName()}
-                    {getAmount()}
+                    {/* {getAmount()} */}
                 </div>
                 {/* <div>{JSON.stringify(filterValues)}</div> */}
                 <button 
                     className='filter-submit' 
                     onClick={() => {
+                        setIsSearching(true)
                         setSearchTerm(filterValues.playerName)
                         searchForPlayer(filterValues.playerName)
                     }}
@@ -117,9 +128,7 @@ const Filter = ({include, filterValues, setFilterValues, getPlayerData}: propTyp
                             className='results-player'
                             key={playerName}
                             onClick={() => {
-                                setFilterValues((old: filterType) => ({...old, player: playerName}),
-                                    getPlayerData()
-                                )
+                                getPlayerData(filterValues.event, playerName)
                             }}
                         >
                             {playerName}
