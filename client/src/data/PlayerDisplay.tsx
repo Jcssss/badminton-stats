@@ -12,14 +12,14 @@ const PlayerDisplay = ({graphData, summaryData}: PropTypes) => {
         <div className='data-container player'>
             <div className='aggregate-container'>
                 <div className='player-name'>{summaryData.name}</div>
-                <div className='player-country'>{summaryData.country}</div>
+                <div className='player-country'>{`(${summaryData.country})`}</div>
                 <li className='aggregate-list'>
                     {summaryData.points && <ul className='aggregate-item'>
-                        <div className='aggregate-label'>Avg Points</div>
+                        <div className='aggregate-label'>Average Points</div>
                         <div className='aggregate-data'>{summaryData.points.avg}</div>
                     </ul>}
                     {summaryData.rank && <ul className='aggregate-item'>
-                        <div className='aggregate-label'>Avg Rank</div>
+                        <div className='aggregate-label'>Average Rank</div>
                         <div className='aggregate-data'>{summaryData.rank.avg}</div>
                     </ul>}
                     {summaryData.overallWinLoss && <ul className='aggregate-item'>

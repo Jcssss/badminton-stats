@@ -67,12 +67,12 @@ const getYearlyTournamentData = async (
         let tournaments = document.querySelectorAll('#tabcontent > div.module--card');
         let tournamentData = Array.from(tournaments).map((tournament): TournamentData => {
             let totalTournamentWins = 0;
-            let tourEvents = tournament.querySelectorAll('li.list__item > h5');
+            let tourEvents = tournament.querySelectorAll('li.list__item > h4');
     
             // verifies that the player played in the specified event in the tournament
             let eventIndex = Array.from(tourEvents).findIndex((ev) => {
                 let text = ev.textContent;
-                return text && text.replace(/[\\n\s]/g, '') == event;
+                return text && text.includes(`${event}`);
             })
             if (eventIndex == -1) {
                 return {};
@@ -137,6 +137,8 @@ const getYearlyTournamentData = async (
             let totalTournamentMatches = matchData.length;
             totalMatchesWon += totalTournamentWins;
             totalMatchesPlayed += totalTournamentMatches;
+            let winsToDate = curWins - totalMatchesWon + totalTournamentWins;
+            let matchesToDate = curMatches - totalMatchesPlayed + totalTournamentMatches;
 
             return {
                 name: name,
@@ -144,10 +146,10 @@ const getYearlyTournamentData = async (
                 edate: dates[1],
                 totalTournamentWins: totalTournamentWins,
                 totalTournamentMatches: totalTournamentMatches,
-                winRate: (curWins - totalMatchesWon + totalTournamentWins) / (curMatches - totalMatchesPlayed + totalTournamentMatches),
+                winRate: (winsToDate / matchesToDate).toFixed(3),
                 matches: matchData,
             }
-        }).filter(tournament => tournament)
+        }).filter(tournament => tournament && tournament.hasOwnProperty('name'))
 
         return {wins: totalMatchesWon, matches: totalMatchesPlayed, tournamentData: tournamentData}
     }, event, playerName, curWins, curMatches);
@@ -213,6 +215,7 @@ const getPlayerData = async (event: string, player: string, years: number): Prom
         XD: 'Mixed',
     }
 
+    console.log(playerPage);
     await page.goto(playerPage);
     await page.waitForSelector(`#tabStats${tags[event]}`);
     

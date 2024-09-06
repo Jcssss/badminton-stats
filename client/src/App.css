@@ -138,6 +138,18 @@ body {
 
 .player-name {
     text-align: center;
+    color: white;
+    font-weight: bold;
+    font-size: 42px;
+    margin-top: 20px;
+}
+
+.player-country {
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    font-size: 34px;
+    margin-bottom: 10px;
 }
 
 .aggregate-list {
@@ -154,6 +166,15 @@ body {
     padding: 10px;
     margin: 10px;
     border-radius: 30px;
+}
+
+.aggregate-label {
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.aggregate-data {
+    font-size: 30px;
 }
 
 .graph-container {

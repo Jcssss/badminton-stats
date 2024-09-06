@@ -123,7 +123,7 @@ const Filter = ({include, getPlayerData}: propTypes) => {
             </div>
             <div className='results-container'>
                 {searchResults.map((playerName) => {
-                    return (
+                    return !isSearching && (
                         <div
                             className='results-player'
                             key={playerName}
