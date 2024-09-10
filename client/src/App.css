@@ -38,6 +38,12 @@ body {
     margin-top: 10%;
 }
 
+.filter-option-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
 .filter-submit {
     width: 10%;
     border-radius: 5px;

@@ -6,10 +6,10 @@ export const FilterSettings = {
             amount: 'Years',
         }
     },
-    'Event': {
-        filterSettings: {
-            event: true,
-            amount: 'Players',
-        }
-    }
+    // 'Event': {
+    //     filterSettings: {
+    //         event: true,
+    //         amount: 'Players',
+    //     }
+    // }
 }

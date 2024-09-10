@@ -1,4 +1,5 @@
 import React, { useState, ReactElement } from 'react';
+import Tooltip from '../data/Tooltip';
 
 type includeType = {
     playerName?: boolean,
@@ -104,8 +105,10 @@ const Filter = ({include, getPlayerData}: propTypes) => {
         <div className='container'>
             <div className='filter-container'>
                 <div className='filter-option-container'>
+                    <Tooltip>Help this is a test we'll see what happens but hopefully everything works out ya ya ya. TEST TEST TEST TEST TEST</Tooltip>
                     {getEvent()}
                     {getPlayerName()}
+                    <Tooltip>Help</Tooltip>
                     {/* {getAmount()} */}
                 </div>
                 {/* <div>{JSON.stringify(filterValues)}</div> */}

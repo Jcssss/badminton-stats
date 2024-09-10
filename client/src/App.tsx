@@ -68,19 +68,19 @@ function App() {
     if (pageState == 'Filter') {
         return (
             <div>
-                <div className='nav-container'>
+                <li className='nav-container'>
                     {Object.keys(FilterSettings).map((option) => {
                         return (
-                            <div 
+                            <ul 
                                 key={option}
                                 className={`nav-option ${(filterState == option)? 'active':''}`}
                                 onClick={() => {
                                     setFilterState(option)
                                 }}
-                            >{option}</div>
+                            >{option}</ul>
                         )
                     })}
-                </div>
+                </li>
                 <Filter
                     include={FilterSettings[filterState].filterSettings}
                     getPlayerData={onSubmit}

@@ -1,0 +1,33 @@
+body {
+    --tooltip-color: white;
+}
+
+.tooltip__container {
+    z-index: 500;
+    position: relative;
+    background-color: var(--tooltip-color);
+    width: 22px;
+    height: 22px;
+    border-radius: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tooltip__content {
+    position: absolute;
+    width: min(80vw, 300px);
+    text-align: center;
+    height: auto;
+    background-color: var(--tooltip-color);
+    padding: 10px;
+    border-radius: 10px;
+    z-index: 200;
+}
+
+@media only screen and (max-width: 600px) {
+    .tooltip__content {
+        width: min(60vw, 300px);
+        font-size: 12px;
+    }
+}
