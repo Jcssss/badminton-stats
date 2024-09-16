@@ -42,7 +42,11 @@ function App() {
             }
             setSummaryData((oldSummary) => ({...oldSummary, ...newSummaryData}));
             setGraphData((oldData) => ({...oldData, rank: data.rankingData}));
-        }).then(() => setPageState('Data'));
+        })
+        .then(() => setPageState('Data'))
+        .catch((error) => {
+            console.log(error);
+        });
     }
 
     const getPlayerGamesData = (event: EventType, playerName: string) => {
@@ -62,7 +66,11 @@ function App() {
             }
             setSummaryData((oldSummary) => ({...oldSummary, ...newSummaryData}));
             setGraphData((oldData) => ({...oldData, games: data.tournaments}));
-        }).then(() => setPageState('Data'));
+        })
+        .then(() => setPageState('Data'))
+        .catch((error) => {
+            console.log(error);
+        });
     }
     
     if (pageState == 'Filter') {

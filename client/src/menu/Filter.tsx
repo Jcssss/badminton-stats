@@ -1,4 +1,4 @@
-import React, { useState, ReactElement } from 'react';
+import React, { useState, useEffect, ReactElement } from 'react';
 import Tooltip from '../data/Tooltip';
 
 type includeType = {
@@ -22,7 +22,17 @@ const Filter = ({include, getPlayerData}: propTypes) => {
     const [searchResults, setSearchResults] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState<string|null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchValid, setSearchValid] = useState(false);
     const [filterValues, setFilterValues] = useState({playerName: '', event: 'MS'});
+    const [errorMessage, setErrorMessage] = useState('');
+
+    useEffect(() => {
+        if (filterValues.playerName.length < 3) {
+            setSearchValid(false);
+        } else {
+            setSearchValid(true);
+        }
+    }, [filterValues.playerName])
 
     const searchForPlayer = (searchString: string) => {
         fetch('/api/playersearch?' + new URLSearchParams({
@@ -32,9 +42,13 @@ const Filter = ({include, getPlayerData}: propTypes) => {
         .then((data) => {
             setSearchResults(data.data.players);
         })
-        .then(() => setIsSearching(false));
+        .then(() => setIsSearching(false))
+        .catch((error) => {
+            console.log(error);
+        });;
     }
 
+    // Creates the input bar for the player's name
     const getPlayerName = (): ReactElement => {
         return (include.playerName)? 
             <input 
@@ -48,6 +62,7 @@ const Filter = ({include, getPlayerData}: propTypes) => {
             ></input> : <></>
     }
 
+    // Creates the event dropdown for the 5 diciplines 
     const getEvent = (): ReactElement => {
         return (include.event)? 
             <select
@@ -75,22 +90,32 @@ const Filter = ({include, getPlayerData}: propTypes) => {
     //         ></input> : <></>
     // }
 
+    // Displays a message to users depending on whether a search
+    // is being performed and the number of search results
     const displayResultsHeader = () => {
+
+        // A search is being performed
         if (isSearching) {
             return <div className='results-loading-container'>
                 <div>Searching for player...</div>
                 <div className='loader'></div>
             </div>
+
+        // A search has been performed with 1 result
         } else if (searchTerm && searchResults.length == 1) {
             return <>
                 <div>{`1 player with name containing '${searchTerm}'.`}</div>
                 <div>Select a player to view their data.</div>
             </>
+        
+        // A search has been performed with 2+ results
         } else if (searchTerm && searchResults.length != 0) {
             return <>
                 <div>{`${searchResults.length} players with name containing '${searchTerm}'.`}</div>
                 <div>Select a player to view their data.</div>
             </>
+
+        // A search has been performed with 0 results
         } else if (searchTerm) {
             return <>
                 <div>{`No players with name containing '${searchTerm}'.`}</div>
@@ -104,20 +129,25 @@ const Filter = ({include, getPlayerData}: propTypes) => {
     return (
         <div className='container'>
             <div className='filter-container'>
+                <div className='error'>{errorMessage}</div>
                 <div className='filter-option-container'>
-                    <Tooltip>Help this is a test we'll see what happens but hopefully everything works out ya ya ya. TEST TEST TEST TEST TEST</Tooltip>
+                    <Tooltip>Data is scraped from the BWF Official Tournament Software. Select search criteria to find a player, and then select said player to scrape their data.</Tooltip>
                     {getEvent()}
                     {getPlayerName()}
-                    <Tooltip>Help</Tooltip>
                     {/* {getAmount()} */}
                 </div>
                 {/* <div>{JSON.stringify(filterValues)}</div> */}
                 <button 
                     className='filter-submit' 
                     onClick={() => {
-                        setIsSearching(true)
-                        setSearchTerm(filterValues.playerName)
-                        searchForPlayer(filterValues.playerName)
+                        if (searchValid) {
+                            setErrorMessage('');
+                            setIsSearching(true)
+                            setSearchTerm(filterValues.playerName)
+                            searchForPlayer(filterValues.playerName)
+                        } else {
+                            setErrorMessage('**Search terms must be atleast 3 characters long. Please try again**')
+                        }
                     }}
                 >Search</button>
             </div>

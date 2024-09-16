@@ -30,6 +30,11 @@ body {
 
 /* Filter */
 
+.error {
+    padding: 5px;
+    color: rgb(0, 0, 0);
+}
+
 .filter-container {
     width: 100vw;
     display: flex;
